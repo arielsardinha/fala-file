@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:fala_file/presentation/viewmodels/file_viewmodel.dart';
+import 'package:fala_file/core/services/tts_service.dart';
 import 'package:provider/provider.dart';
 
 class FilesListPage extends StatefulWidget {
@@ -22,7 +23,22 @@ class _FilesListPageState extends State<FilesListPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Meus PDFs'),
+        title: const Text('Fala File - Leitor de PDF'),
+        actions: [
+          Consumer<FileViewModel>(
+            builder: (context, viewModel, child) {
+              if (viewModel.ttsState == TtsState.playing || 
+                  viewModel.ttsState == TtsState.continued ||
+                  viewModel.ttsState == TtsState.paused) {
+                return IconButton(
+                  icon: const Icon(Icons.stop),
+                  onPressed: () => viewModel.stop(),
+                );
+              }
+              return const SizedBox.shrink();
+            },
+          ),
+        ],
       ),
       body: Consumer<FileViewModel>(
         builder: (context, viewModel, child) {
@@ -32,7 +48,14 @@ class _FilesListPageState extends State<FilesListPage> {
 
           if (viewModel.files.isEmpty) {
             return const Center(
-              child: Text('Nenhum arquivo enviado ainda.'),
+              child: Padding(
+                padding: EdgeInsets.all(20.0),
+                child: Text(
+                  'Nenhum arquivo enviado ainda.\nToque no + para adicionar um PDF.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 16),
+                ),
+              ),
             );
           }
 
@@ -41,13 +64,16 @@ class _FilesListPageState extends State<FilesListPage> {
             itemBuilder: (context, index) {
               final file = viewModel.files[index];
               return ListTile(
-                leading: const Icon(Icons.picture_as_pdf),
+                leading: const Icon(Icons.picture_as_pdf, color: Colors.red),
                 title: Text(file.title),
                 subtitle: Text(
                   'Enviado em: ${file.uploadDate.day}/${file.uploadDate.month}/${file.uploadDate.year}',
                 ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.play_circle_fill, size: 36, color: Colors.blue),
+                  onPressed: () => _showPlayerModal(context, file.title, file.content),
+                ),
                 onTap: () {
-                  // TODO: Mostrar conteúdo do PDF extraído
                   _showContentDialog(context, file.title, file.content);
                 },
               );
@@ -78,6 +104,71 @@ class _FilesListPageState extends State<FilesListPage> {
               child: const Text('Fechar'),
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showPlayerModal(BuildContext context, String title, String content) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 20),
+              Consumer<FileViewModel>(
+                builder: (context, viewModel, child) {
+                  final isPlaying = viewModel.ttsState == TtsState.playing || 
+                                  viewModel.ttsState == TtsState.continued;
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.stop, size: 48),
+                        onPressed: () {
+                          viewModel.stop();
+                        },
+                      ),
+                      const SizedBox(width: 20),
+                      IconButton(
+                        icon: Icon(
+                          isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
+                          size: 64,
+                          color: Colors.blue,
+                        ),
+                        onPressed: () {
+                          if (isPlaying) {
+                            viewModel.pause();
+                          } else {
+                            viewModel.speak(content);
+                          }
+                        },
+                      ),
+                    ],
+                  );
+                },
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                "Lendo em Português (Brasil)",
+                style: TextStyle(color: Colors.grey, fontSize: 12),
+              ),
+              const SizedBox(height: 10),
+            ],
+          ),
         );
       },
     );

@@ -127,6 +127,25 @@ class _FilesListPageState extends State<FilesListPage> {
                 style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
                 textAlign: TextAlign.center,
               ),
+              const SizedBox(height: 10),
+              Consumer<FileViewModel>(
+                builder: (context, viewModel, child) {
+                  return Column(
+                    children: [
+                      LinearProgressIndicator(
+                        value: viewModel.ttsProgress,
+                        backgroundColor: Colors.grey[200],
+                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        "${(viewModel.ttsProgress * 100).toInt()}% concluído",
+                        style: const TextStyle(fontSize: 10, color: Colors.grey),
+                      ),
+                    ],
+                  );
+                },
+              ),
               const SizedBox(height: 20),
               Consumer<FileViewModel>(
                 builder: (context, viewModel, child) {
@@ -163,8 +182,8 @@ class _FilesListPageState extends State<FilesListPage> {
               ),
               const SizedBox(height: 20),
               const Text(
-                "Lendo em Português (Brasil)",
-                style: TextStyle(color: Colors.grey, fontSize: 12),
+                "Processamento dinâmico habilitado (lendo por trechos)",
+                style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w500),
               ),
               const SizedBox(height: 10),
             ],

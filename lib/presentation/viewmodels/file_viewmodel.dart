@@ -4,17 +4,33 @@ import 'package:fala_file/domain/usecases/get_files_use_case.dart';
 import 'package:fala_file/domain/usecases/upload_file_use_case.dart';
 import 'package:fala_file/core/services/tts_service.dart';
 import 'package:file_picker/file_picker.dart';
+import 'dart:async';
 
 class FileViewModel extends ChangeNotifier {
   final GetFilesUseCase getFilesUseCase;
   final UploadFileUseCase uploadFileUseCase;
   final TtsService ttsService;
 
+  Timer? _ttsUpdateTimer;
+
   FileViewModel({
     required this.getFilesUseCase,
     required this.uploadFileUseCase,
     required this.ttsService,
-  });
+  }) {
+    // Start a timer to notify UI of progress/state changes while playing
+    _ttsUpdateTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      if (ttsService.state == TtsState.playing || ttsService.state == TtsState.continued) {
+        notifyListeners();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ttsUpdateTimer?.cancel();
+    super.dispose();
+  }
 
   List<FileEntity> _files = [];
   List<FileEntity> get files => _files;
@@ -23,6 +39,7 @@ class FileViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   TtsState get ttsState => ttsService.state;
+  double get ttsProgress => ttsService.progress;
 
   Future<void> loadFiles() async {
     _isLoading = true;

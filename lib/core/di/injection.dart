@@ -12,8 +12,6 @@ import 'package:fala_file/presentation/viewmodels/file_viewmodel.dart';
 final sl = GetIt.instance;
 
 Future<void> init() async {
-  await TtsService.initTts();
-
   // Core
   sl.registerLazySingleton<DatabaseHelper>(() => DatabaseHelper());
   sl.registerLazySingleton<TtsService>(() => TtsService());

@@ -11,9 +11,9 @@
 ## Stack Técnica & Padrões
 - **Linguagem:** Dart / Flutter.
 - **Persistência:** SQLite (sqflite) - salvar texto e progresso de leitura (index/offset).
-- **Voz:** flutter_tts (Configurado estritamente para pt-BR).
+- **Voz:** flutter_tts (Configurado estritamente para pt-BR) e ElevenLabs.
 - **Arquitetura:** Clean Architecture (Domain, Data, Presentation).
-- **Padrões:** Repository Pattern, Factory, e Dependency Injection (get_it).
+- **Padrões:** Repository Pattern, Factory, e Dependency Injection (get_it), adapter pattern, strategy pattern.
 
 ## Regras de Implementação para o Copilot
 1. **Controle de Estado:** Implementar lógica de Iniciar, Pausar e Retomar mantendo o estado sincronizado com o banco de dados.

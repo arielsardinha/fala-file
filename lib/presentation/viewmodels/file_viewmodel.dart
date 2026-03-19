@@ -18,17 +18,13 @@ class FileViewModel extends ChangeNotifier {
     required this.uploadFileUseCase,
     required this.ttsService,
   }) {
-    // Start a timer to notify UI of progress/state changes while playing
-    _ttsUpdateTimer = Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      if (ttsService.state == TtsState.playing || ttsService.state == TtsState.continued) {
-        notifyListeners();
-      }
-    });
+    // Sync UI with TTS events directly
+    ttsService.onProgress = () => notifyListeners();
   }
 
   @override
   void dispose() {
-    _ttsUpdateTimer?.cancel();
+    ttsService.onProgress = null;
     super.dispose();
   }
 
@@ -40,6 +36,10 @@ class FileViewModel extends ChangeNotifier {
 
   TtsState get ttsState => ttsService.state;
   double get ttsProgress => ttsService.progress;
+  List<String> get chunks => ttsService.chunks;
+  int get currentChunkIndex => ttsService.currentChunkIndex;
+  int get currentWordStart => ttsService.currentWordStart;
+  int get currentWordEnd => ttsService.currentWordEnd;
 
   Future<void> loadFiles() async {
     _isLoading = true;

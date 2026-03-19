@@ -1,5 +1,6 @@
 import 'dart:developer';
 import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:flutter_tts/flutter_tts.dart';
 
 enum TtsState { playing, paused, stopped, continued }
@@ -7,6 +8,7 @@ enum TtsState { playing, paused, stopped, continued }
 class TtsService {
   final FlutterTts _flutterTts = FlutterTts();
   TtsState _ttsState = TtsState.stopped;
+  VoidCallback? onProgress;
 
   // Pagination/Chunking logic
   List<String> _chunks = [];
@@ -14,25 +16,30 @@ class TtsService {
   bool _isManualStop = false;
   String? _lastText;
 
+  // Word tracking
+  int _currentWordStart = 0;
+  int _currentWordEnd = 0;
+
+  List<String> get chunks => _chunks;
+  int get currentChunkIndex => _currentChunkIndex;
+  int get currentWordStart => _currentWordStart;
+  int get currentWordEnd => _currentWordEnd;
+
   TtsService() {
     _initTts();
   }
 
   Future<void> _initTts() async {
-    // Basic settings for pt-BR
-    // Fine-tuning for more natural sound
-    // 0.4 to 0.45 is usually more "human" for long reading than 0.5
-    await _flutterTts.setSpeechRate(0.42);
+    // Slower speech rate for better follow-along (0.35 - 0.38 is ideal)
+    await _flutterTts.setSpeechRate(0.38);
     await _flutterTts.setVolume(1.0);
+    await _flutterTts.setPitch(1.0); // More natural pitch
 
-    // Pitch slightly below 1.0 (e.g., 0.9) often sounds more natural/mature
-    await _flutterTts.setPitch(0.9);
-
-    // Try to set a high-quality voice if available
     await _setupBestVoice();
 
     _flutterTts.setStartHandler(() {
       _ttsState = TtsState.playing;
+      onProgress?.call();
     });
 
     _flutterTts.setCompletionHandler(() {
@@ -42,19 +49,40 @@ class TtsService {
 
     _flutterTts.setCancelHandler(() {
       _ttsState = TtsState.stopped;
+      onProgress?.call();
     });
 
     _flutterTts.setPauseHandler(() {
       _ttsState = TtsState.paused;
+      onProgress?.call();
     });
 
     _flutterTts.setContinueHandler(() {
       _ttsState = TtsState.continued;
+      onProgress?.call();
     });
 
     _flutterTts.setErrorHandler((msg) {
       log("TTS Error: $msg");
       _ttsState = TtsState.stopped;
+      onProgress?.call();
+    });
+
+    _flutterTts.setProgressHandler((
+      String text,
+      int start,
+      int end,
+      String word,
+    ) {
+      _currentWordStart = start;
+      _currentWordEnd = end;
+      
+      // Reduced delay to 100ms for snappier response
+      Future.delayed(const Duration(milliseconds: 100), () {
+        if (_ttsState == TtsState.playing || _ttsState == TtsState.continued) {
+          onProgress?.call();
+        }
+      });
     });
   }
 
@@ -96,12 +124,17 @@ class TtsService {
     }
   }
 
-  /// Splits text into smaller chunks to avoid long loading times and memory issues.
-  List<String> _splitIntoChunks(String text, {int maxChars = 1000}) {
+  /// Splits text into smaller chunks for better sync and less memory usage.
+  List<String> _splitIntoChunks(String text, {int maxChars = 400}) {
     if (text.isEmpty) return [];
 
+    String cleanedText = text
+        .replaceAll(RegExp(r'\n{2,}'), '\n')
+        .replaceAll(RegExp(r'\s{2,}'), ' ')
+        .trim();
+
     RegExp sentenceSplitter = RegExp(r'(?<=[.!?])\s+');
-    List<String> sentences = text.split(sentenceSplitter);
+    List<String> sentences = cleanedText.split(sentenceSplitter);
 
     List<String> chunks = [];
     String currentChunk = "";
@@ -121,6 +154,11 @@ class TtsService {
 
   Future<void> _onChunkCompleted() async {
     if (_isManualStop) return;
+
+    // Clear progress immediately when a chunk ends
+    _currentWordStart = 0;
+    _currentWordEnd = 0;
+    onProgress?.call();
 
     if (_currentChunkIndex < _chunks.length - 1) {
       _currentChunkIndex++;
@@ -144,6 +182,8 @@ class TtsService {
     _lastText = text;
     _chunks = _splitIntoChunks(text);
     _currentChunkIndex = 0;
+    _currentWordStart = 0;
+    _currentWordEnd = 0;
 
     if (_chunks.isNotEmpty) {
       await _flutterTts.speak(_chunks[0]);
@@ -163,6 +203,8 @@ class TtsService {
 
     int targetIndex = (progress * (_chunks.length - 1)).floor();
     _currentChunkIndex = targetIndex.clamp(0, _chunks.length - 1);
+    _currentWordStart = 0;
+    _currentWordEnd = 0;
 
     _isManualStop = false;
     await _flutterTts.speak(_chunks[_currentChunkIndex]);
@@ -177,6 +219,8 @@ class TtsService {
     _isManualStop = true;
     _chunks = [];
     _currentChunkIndex = 0;
+    _currentWordStart = 0;
+    _currentWordEnd = 0;
     _lastText = null;
     await _flutterTts.stop();
   }

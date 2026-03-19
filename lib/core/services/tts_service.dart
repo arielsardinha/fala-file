@@ -1,4 +1,5 @@
 import 'dart:developer';
+import 'dart:io';
 import 'package:flutter_tts/flutter_tts.dart';
 
 enum TtsState { playing, paused, stopped, continued }
@@ -18,10 +19,17 @@ class TtsService {
   }
 
   Future<void> _initTts() async {
-    await _flutterTts.setLanguage("pt-BR");
-    await _flutterTts.setSpeechRate(0.5);
+    // Basic settings for pt-BR
+    // Fine-tuning for more natural sound
+    // 0.4 to 0.45 is usually more "human" for long reading than 0.5
+    await _flutterTts.setSpeechRate(0.42);
     await _flutterTts.setVolume(1.0);
-    await _flutterTts.setPitch(1.0);
+
+    // Pitch slightly below 1.0 (e.g., 0.9) often sounds more natural/mature
+    await _flutterTts.setPitch(0.9);
+
+    // Try to set a high-quality voice if available
+    await _setupBestVoice();
 
     _flutterTts.setStartHandler(() {
       _ttsState = TtsState.playing;
@@ -50,13 +58,51 @@ class TtsService {
     });
   }
 
+  /// Tries to find and set the most natural sounding voice available for pt-BR
+  Future<void> _setupBestVoice() async {
+    try {
+      if (Platform.isAndroid) {
+        // Ensure we are using Google engine if possible
+        await _flutterTts.setEngine("com.google.android.tts");
+      }
+
+      List<dynamic>? voices = await _flutterTts.getVoices;
+      if (voices != null) {
+        // Look for voices that are pt-BR and likely to be high quality (Neural/Natural)
+        // Common patterns for high-quality Google voices: "pt-br-x-afs", "neural"
+        var bestVoice = voices.firstWhere(
+          (voice) =>
+              voice["locale"].toString().contains("pt-BR") &&
+              (voice["name"].toString().toLowerCase().contains("neural") ||
+                  voice["name"].toString().toLowerCase().contains("afs") ||
+                  voice["name"].toString().toLowerCase().contains("network")),
+          orElse: () => voices.firstWhere(
+            (voice) => voice["locale"].toString().contains("pt-BR"),
+            orElse: () => null,
+          ),
+        );
+
+        if (bestVoice != null) {
+          log("Setting best available voice: ${bestVoice["name"]}");
+          await _flutterTts.setLanguage(bestVoice['locale']);
+          await _flutterTts.setVoice({
+            "name": bestVoice["name"],
+            "locale": bestVoice["locale"],
+          });
+        }
+      }
+    } catch (e) {
+      log("Error setting up best voice: $e");
+    }
+  }
+
   /// Splits text into smaller chunks to avoid long loading times and memory issues.
   List<String> _splitIntoChunks(String text, {int maxChars = 1000}) {
     if (text.isEmpty) return [];
-    
+
     RegExp sentenceSplitter = RegExp(r'(?<=[.!?])\s+');
     List<String> sentences = text.split(sentenceSplitter);
-    
+
     List<String> chunks = [];
     String currentChunk = "";
 
@@ -68,7 +114,7 @@ class TtsService {
         currentChunk = sentence;
       }
     }
-    
+
     if (currentChunk.isNotEmpty) chunks.add(currentChunk);
     return chunks;
   }
@@ -86,8 +132,9 @@ class TtsService {
   Future<void> speak(String text) async {
     if (text.isEmpty) return;
 
-    // If we are already playing this exact text (or paused), just resume
-    if (_ttsState == TtsState.paused && _chunks.isNotEmpty && _lastText == text) {
+    if (_ttsState == TtsState.paused &&
+        _chunks.isNotEmpty &&
+        _lastText == text) {
       _isManualStop = false;
       await _flutterTts.speak(_chunks[_currentChunkIndex]);
       return;
@@ -99,13 +146,11 @@ class TtsService {
     _currentChunkIndex = 0;
 
     if (_chunks.isNotEmpty) {
-      log("Starting playback with ${_chunks.length} chunks");
       await _flutterTts.speak(_chunks[0]);
     }
   }
 
   Future<void> seekTo(double progress, String text) async {
-    // If it's a new text, split it first
     if (_lastText != text || _chunks.isEmpty) {
       _lastText = text;
       _chunks = _splitIntoChunks(text);
@@ -113,17 +158,13 @@ class TtsService {
 
     if (_chunks.isEmpty) return;
 
-    // Stop current playback
     _isManualStop = true;
     await _flutterTts.stop();
 
-    // Calculate new index
     int targetIndex = (progress * (_chunks.length - 1)).floor();
     _currentChunkIndex = targetIndex.clamp(0, _chunks.length - 1);
 
-    // Restart from new index
     _isManualStop = false;
-    log("Seeking to chunk $_currentChunkIndex (${(progress * 100).toInt()}%)");
     await _flutterTts.speak(_chunks[_currentChunkIndex]);
   }
 
@@ -141,6 +182,7 @@ class TtsService {
   }
 
   TtsState get state => _ttsState;
-  
-  double get progress => _chunks.isEmpty ? 0 : (_currentChunkIndex + 1) / _chunks.length;
+
+  double get progress =>
+      _chunks.isEmpty ? 0 : (_currentChunkIndex + 1) / _chunks.length;
 }

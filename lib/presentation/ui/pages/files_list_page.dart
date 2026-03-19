@@ -117,79 +117,140 @@ class _FilesListPageState extends State<FilesListPage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.all(24.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 10),
-              Consumer<FileViewModel>(
-                builder: (context, viewModel, child) {
-                  return Column(
-                    children: [
-                      LinearProgressIndicator(
-                        value: viewModel.ttsProgress,
-                        backgroundColor: Colors.grey[200],
-                        valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
-                      ),
-                      const SizedBox(height: 5),
-                      Text(
-                        "${(viewModel.ttsProgress * 100).toInt()}% concluído",
-                        style: const TextStyle(fontSize: 10, color: Colors.grey),
-                      ),
-                    ],
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              Consumer<FileViewModel>(
-                builder: (context, viewModel, child) {
-                  final isPlaying = viewModel.ttsState == TtsState.playing || 
-                                  viewModel.ttsState == TtsState.continued;
+        return _PlayerModalContent(title: title, content: content);
+      },
+    );
+  }
+}
 
-                  return Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
+class _PlayerModalContent extends StatefulWidget {
+  final String title;
+  final String content;
+
+  const _PlayerModalContent({required this.title, required this.content});
+
+  @override
+  State<_PlayerModalContent> createState() => _PlayerModalContentState();
+}
+
+class _PlayerModalContentState extends State<_PlayerModalContent> {
+  double? _draggingValue;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 40),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          Text(
+            widget.title,
+            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+          Consumer<FileViewModel>(
+            builder: (context, viewModel, child) {
+              final currentProgress = _draggingValue ?? viewModel.ttsProgress;
+              
+              return Column(
+                children: [
+                  Slider(
+                    value: currentProgress.clamp(0.0, 1.0),
+                    onChanged: (value) {
+                      setState(() {
+                        _draggingValue = value;
+                      });
+                    },
+                    onChangeEnd: (value) {
+                      viewModel.seekTo(value, widget.content);
+                      setState(() {
+                        _draggingValue = null;
+                      });
+                    },
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          "${(currentProgress * 100).toInt()}%",
+                          style: const TextStyle(fontSize: 12, color: Colors.blue, fontWeight: FontWeight.bold),
+                        ),
+                        const Text(
+                          "Arraste para navegar",
+                          style: TextStyle(fontSize: 10, color: Colors.grey),
+                        ),
+                        const Text(
+                          "100%",
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(height: 30),
+          Consumer<FileViewModel>(
+            builder: (context, viewModel, child) {
+              final isPlaying = viewModel.ttsState == TtsState.playing || 
+                              viewModel.ttsState == TtsState.continued;
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
                     children: [
                       IconButton(
-                        icon: const Icon(Icons.stop, size: 48),
-                        onPressed: () {
-                          viewModel.stop();
-                        },
+                        icon: const Icon(Icons.stop_circle_outlined, size: 48),
+                        onPressed: () => viewModel.stop(),
                       ),
-                      const SizedBox(width: 20),
+                      const Text("Parar", style: TextStyle(fontSize: 12)),
+                    ],
+                  ),
+                  const SizedBox(width: 40),
+                  Column(
+                    children: [
                       IconButton(
                         icon: Icon(
                           isPlaying ? Icons.pause_circle_filled : Icons.play_circle_filled,
-                          size: 64,
+                          size: 72,
                           color: Colors.blue,
                         ),
                         onPressed: () {
                           if (isPlaying) {
                             viewModel.pause();
                           } else {
-                            viewModel.speak(content);
+                            viewModel.speak(widget.content);
                           }
                         },
                       ),
+                      Text(isPlaying ? "Pausar" : "Ouvir", style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                     ],
-                  );
-                },
-              ),
-              const SizedBox(height: 20),
-              const Text(
-                "Processamento dinâmico habilitado (lendo por trechos)",
-                style: TextStyle(color: Colors.green, fontSize: 12, fontWeight: FontWeight.w500),
-              ),
-              const SizedBox(height: 10),
-            ],
+                  ),
+                ],
+              );
+            },
           ),
-        );
-      },
+          const SizedBox(height: 30),
+          const Text(
+            "Início instantâneo habilitado",
+            style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
     );
   }
 }

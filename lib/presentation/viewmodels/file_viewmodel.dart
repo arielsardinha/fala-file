@@ -95,4 +95,9 @@ class FileViewModel extends ChangeNotifier {
     await ttsService.stop();
     notifyListeners();
   }
+
+  Future<void> seekTo(double progress, String text) async {
+    await ttsService.seekTo(progress, text);
+    notifyListeners();
+  }
 }

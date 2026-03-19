@@ -11,6 +11,7 @@ class TtsService {
   List<String> _chunks = [];
   int _currentChunkIndex = 0;
   bool _isManualStop = false;
+  String? _lastText;
 
   TtsService() {
     _initTts();
@@ -50,12 +51,9 @@ class TtsService {
   }
 
   /// Splits text into smaller chunks to avoid long loading times and memory issues.
-  /// Uses a maximum character limit, ideally splitting at sentence boundaries.
   List<String> _splitIntoChunks(String text, {int maxChars = 1000}) {
     if (text.isEmpty) return [];
     
-    // Simple split by sentences to avoid cutting words/context
-    // We look for . ! or ? followed by space or newline
     RegExp sentenceSplitter = RegExp(r'(?<=[.!?])\s+');
     List<String> sentences = text.split(sentenceSplitter);
     
@@ -89,12 +87,14 @@ class TtsService {
     if (text.isEmpty) return;
 
     // If we are already playing this exact text (or paused), just resume
-    if (_ttsState == TtsState.paused && _chunks.isNotEmpty) {
+    if (_ttsState == TtsState.paused && _chunks.isNotEmpty && _lastText == text) {
+      _isManualStop = false;
       await _flutterTts.speak(_chunks[_currentChunkIndex]);
       return;
     }
 
     _isManualStop = false;
+    _lastText = text;
     _chunks = _splitIntoChunks(text);
     _currentChunkIndex = 0;
 
@@ -104,8 +104,31 @@ class TtsService {
     }
   }
 
+  Future<void> seekTo(double progress, String text) async {
+    // If it's a new text, split it first
+    if (_lastText != text || _chunks.isEmpty) {
+      _lastText = text;
+      _chunks = _splitIntoChunks(text);
+    }
+
+    if (_chunks.isEmpty) return;
+
+    // Stop current playback
+    _isManualStop = true;
+    await _flutterTts.stop();
+
+    // Calculate new index
+    int targetIndex = (progress * (_chunks.length - 1)).floor();
+    _currentChunkIndex = targetIndex.clamp(0, _chunks.length - 1);
+
+    // Restart from new index
+    _isManualStop = false;
+    log("Seeking to chunk $_currentChunkIndex (${(progress * 100).toInt()}%)");
+    await _flutterTts.speak(_chunks[_currentChunkIndex]);
+  }
+
   Future<void> pause() async {
-    _isManualStop = true; // Prevent completion handler from triggering next chunk
+    _isManualStop = true;
     await _flutterTts.pause();
   }
 
@@ -113,11 +136,11 @@ class TtsService {
     _isManualStop = true;
     _chunks = [];
     _currentChunkIndex = 0;
+    _lastText = null;
     await _flutterTts.stop();
   }
 
   TtsState get state => _ttsState;
   
-  // Progress information
   double get progress => _chunks.isEmpty ? 0 : (_currentChunkIndex + 1) / _chunks.length;
 }

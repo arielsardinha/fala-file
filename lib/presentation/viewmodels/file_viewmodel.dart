@@ -9,9 +9,7 @@ import 'dart:async';
 class FileViewModel extends ChangeNotifier {
   final GetFilesUseCase getFilesUseCase;
   final UploadFileUseCase uploadFileUseCase;
-  final TtsService ttsService;
-
-  Timer? _ttsUpdateTimer;
+  final ITtsService ttsService;
 
   FileViewModel({
     required this.getFilesUseCase,

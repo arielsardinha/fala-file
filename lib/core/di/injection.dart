@@ -14,7 +14,7 @@ final sl = GetIt.instance;
 Future<void> init() async {
   // Core
   sl.registerLazySingleton<DatabaseHelper>(() => DatabaseHelper());
-  sl.registerLazySingleton<TtsService>(() => TtsService());
+  sl.registerLazySingleton<ITtsService>(() => FlutterTtsService());
 
   // Data Sources
   sl.registerLazySingleton<FileLocalDataSource>(

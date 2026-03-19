@@ -163,7 +163,8 @@ class _PlayerModalContentState extends State<_PlayerModalContent> {
   }
 
   void _onViewModelUpdate() {
-    final isPlaying = _viewModel.ttsState == TtsState.playing ||
+    final isPlaying =
+        _viewModel.ttsState == TtsState.playing ||
         _viewModel.ttsState == TtsState.continued;
 
     if (isPlaying || _viewModel.ttsState == TtsState.paused) {
@@ -197,8 +198,6 @@ class _PlayerModalContentState extends State<_PlayerModalContent> {
             viewModel.ttsState == TtsState.playing ||
             viewModel.ttsState == TtsState.continued;
         final chunks = viewModel.chunks;
-        // currentIndex is used for UI highlighting
-        final currentIndex = viewModel.currentChunkIndex;
 
         return Column(
           children: [
@@ -375,8 +374,9 @@ class _PlayerModalContentState extends State<_PlayerModalContent> {
                         fontSize: 12,
                         color: isPast ? Colors.grey[600] : Colors.black87,
                         height: 1.4,
-                        fontWeight:
-                            isPast ? FontWeight.normal : FontWeight.w400,
+                        fontWeight: isPast
+                            ? FontWeight.normal
+                            : FontWeight.w400,
                       ),
                     ),
             ),

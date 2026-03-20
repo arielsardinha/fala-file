@@ -1,3 +1,4 @@
+import 'package:fala_file/core/services/tts_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:fala_file/presentation/viewmodels/file_viewmodel.dart';
 import 'package:fala_file/core/services/tts_service.dart';
@@ -25,6 +26,35 @@ class _FilesListPageState extends State<FilesListPage> {
       appBar: AppBar(
         title: const Text('Fala File - Leitor de PDF'),
         actions: [
+          Consumer<FileViewModel>(
+            builder: (context, viewModel, child) {
+              return DropdownButton<TtsEngine>(
+                value: viewModel.currentEngine,
+                icon: const Icon(Icons.settings_voice, color: Colors.blue),
+                underline: const SizedBox(),
+                onChanged: (TtsEngine? newEngine) {
+                  if (newEngine != null) {
+                    viewModel.setEngine(newEngine);
+                  }
+                },
+                items: const [
+                  DropdownMenuItem(
+                    value: TtsEngine.flutter_tts,
+                    child: Text('Nativo (Free)'),
+                  ),
+                  DropdownMenuItem(
+                    value: TtsEngine.amazon,
+                    child: Text('Amazon Polly'),
+                  ),
+                  DropdownMenuItem(
+                    value: TtsEngine.elevenlabs,
+                    child: Text('ElevenLabs'),
+                  ),
+                ],
+              );
+            },
+          ),
+          const SizedBox(width: 8),
           Consumer<FileViewModel>(
             builder: (context, viewModel, child) {
               if (viewModel.ttsState == TtsState.playing ||

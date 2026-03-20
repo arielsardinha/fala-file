@@ -1,3 +1,4 @@
+import 'package:fala_file/core/services/tts_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:fala_file/domain/entities/file_entity.dart';
 import 'package:fala_file/domain/usecases/get_files_use_case.dart';
@@ -38,6 +39,21 @@ class FileViewModel extends ChangeNotifier {
   int get currentChunkIndex => ttsService.currentChunkIndex;
   int get currentWordStart => ttsService.currentWordStart;
   int get currentWordEnd => ttsService.currentWordEnd;
+
+  // Engine control
+  TtsEngine get currentEngine {
+    if (ttsService is TtsManager) {
+      return (ttsService as TtsManager).currentEngine;
+    }
+    return TtsEngine.flutter_tts;
+  }
+
+  void setEngine(TtsEngine engine) {
+    if (ttsService is TtsManager) {
+      (ttsService as TtsManager).setEngine(engine);
+      notifyListeners();
+    }
+  }
 
   Future<void> loadFiles() async {
     _isLoading = true;

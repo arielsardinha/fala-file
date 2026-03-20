@@ -1,7 +1,9 @@
+import 'package:fala_file/core/services/amazon_polly_tts_service.dart';
+import 'package:fala_file/core/services/eleven_labs_tts_service.dart';
+import 'package:fala_file/core/services/tts_manager.dart';
 import 'package:get_it/get_it.dart';
 import 'package:fala_file/core/database/database_helper.dart';
 import 'package:fala_file/core/services/tts_service.dart';
-import 'package:fala_file/core/services/eleven_labs_tts_service.dart';
 import 'package:fala_file/data/datasources/file_local_datasource.dart';
 import 'package:fala_file/data/datasources/pdf_datasource.dart';
 import 'package:fala_file/data/repositories/file_repository_impl.dart';
@@ -15,9 +17,14 @@ final sl = GetIt.instance;
 Future<void> init() async {
   // Core
   sl.registerLazySingleton<DatabaseHelper>(() => DatabaseHelper());
-  
-  // Escolha do Motor de Voz (FlutterTtsService ou ElevenLabsTtsService)
-  sl.registerLazySingleton<ITtsService>(() => ElevenLabsTtsService());
+
+  // Motores de Voz individuais
+  sl.registerLazySingleton<FlutterTtsService>(() => FlutterTtsService());
+  sl.registerLazySingleton<AmazonPollyTtsService>(() => AmazonPollyTtsService());
+  sl.registerLazySingleton<ElevenLabsTtsService>(() => ElevenLabsTtsService());
+
+  // Gerenciador de TTS (Strategy Pattern)
+  sl.registerLazySingleton<ITtsService>(() => TtsManager(sl(), sl(), sl()));
 
   // Data Sources
   sl.registerLazySingleton<FileLocalDataSource>(
